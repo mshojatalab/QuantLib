@@ -34,9 +34,7 @@ namespace QuantLib {
         Real jumpIntensity,
         Real eta)
     : Y0_(Y0), beta_(beta), jumpIntensity_(jumpIntensity), eta_(eta),
-      ouProcess_(std::move(process)) {
-        QL_REQUIRE(ouProcess_, "null Ornstein/Uhlenbeck process");
-    }
+      ouProcess_(std::move(process)) {}
 
     Size ExtOUWithJumpsProcess::size() const {
         return 2;

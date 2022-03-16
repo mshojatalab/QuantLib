@@ -81,7 +81,8 @@ namespace QuantLib {
         auto inflationCashFlow =
             ext::make_shared<ZeroInflationCashFlow>(nominal, infIndex, observationInterpolation_,
                                                     startDate, maturity, observationLag_,
-                                                    infPayDate, growthOnly);
+                                                    adjustInfObsDates_ ? infCalendar_ : NullCalendar(),
+                                                    infConvention, infPayDate, growthOnly);
 
         baseDate_ = inflationCashFlow->baseDate();
         obsDate_ = inflationCashFlow->fixingDate();

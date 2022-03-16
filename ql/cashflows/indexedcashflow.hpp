@@ -45,11 +45,16 @@ namespace QuantLib {
                             public Observer {
       public:
         IndexedCashFlow(Real notional,
-                        ext::shared_ptr<Index> index,
+                        const ext::shared_ptr<Index> &index,
                         const Date& baseDate,
                         const Date& fixingDate,
                         const Date& paymentDate,
-                        bool growthOnly = false);
+                        bool growthOnly = false)
+        : notional_(notional), index_(index),
+          baseDate_(baseDate), fixingDate_(fixingDate),
+          paymentDate_(paymentDate), growthOnly_(growthOnly) {
+            registerWith(index);
+        }
         //! \name Event interface
         //@{
         Date date() const override { return paymentDate_; }

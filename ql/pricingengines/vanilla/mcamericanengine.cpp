@@ -30,17 +30,17 @@
 namespace QuantLib {
 
     AmericanPathPricer::AmericanPathPricer(ext::shared_ptr<Payoff> payoff,
-                                           Size polynomialOrder,
-                                           LsmBasisSystem::PolynomialType polynomialType)
+                                           Size polynomOrder,
+                                           LsmBasisSystem::PolynomType polynomType)
     : scalingValue_(1.0), payoff_(std::move(payoff)),
-      v_(LsmBasisSystem::pathBasisSystem(polynomialOrder, polynomialType)) {
+      v_(LsmBasisSystem::pathBasisSystem(polynomOrder, polynomType)) {
 
-        QL_REQUIRE(   polynomialType == LsmBasisSystem::Monomial
-                   || polynomialType == LsmBasisSystem::Laguerre
-                   || polynomialType == LsmBasisSystem::Hermite
-                   || polynomialType == LsmBasisSystem::Hyperbolic
-                   || polynomialType == LsmBasisSystem::Chebyshev2nd,
-                   "insufficient polynomial type");
+        QL_REQUIRE(   polynomType == LsmBasisSystem::Monomial
+                   || polynomType == LsmBasisSystem::Laguerre
+                   || polynomType == LsmBasisSystem::Hermite
+                   || polynomType == LsmBasisSystem::Hyperbolic
+                   || polynomType == LsmBasisSystem::Chebyshev2nd,
+                   "insufficient polynom type");
 
         // the payoff gives an additional value
         v_.emplace_back([&](Real state){ return this->payoff(state); });

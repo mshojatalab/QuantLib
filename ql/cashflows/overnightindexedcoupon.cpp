@@ -149,8 +149,7 @@ namespace QuantLib {
                     bool telescopicValueDates, 
                     RateAveraging::Type averagingMethod)
     : FloatingRateCoupon(paymentDate, nominal, startDate, endDate,
-                         overnightIndex ? overnightIndex->fixingDays() : 0,
-                         overnightIndex,
+                         overnightIndex->fixingDays(), overnightIndex,
                          gearing, spread,
                          refPeriodStart, refPeriodEnd,
                          dayCounter, false) {
@@ -272,9 +271,7 @@ namespace QuantLib {
     OvernightLeg::OvernightLeg(const Schedule& schedule, ext::shared_ptr<OvernightIndex> i)
     : schedule_(schedule), overnightIndex_(std::move(i)), paymentCalendar_(schedule.calendar()),
       paymentAdjustment_(Following), paymentLag_(0), telescopicValueDates_(false),
-      averagingMethod_(RateAveraging::Compound) {
-        QL_REQUIRE(overnightIndex_, "no index provided");
-    }
+      averagingMethod_(RateAveraging::Compound) {}
 
     OvernightLeg& OvernightLeg::withNotionals(Real notional) {
         notionals_ = vector<Real>(1, notional);

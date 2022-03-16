@@ -31,11 +31,15 @@
 
 namespace QuantLib {
 
-    /*! \deprecated To be removed as unused.
-                    Copy it in your codebase if you need it.
-                    Deprecated in version 1.26.
+    //! Drift term structure
+    /*! Drift term structure for modelling the common drift term:
+        riskFreeRate - dividendYield - 0.5*vol*vol
+
+        \note This term structure will remain linked to the original
+              structures, i.e., any changes in the latters will be
+              reflected in this structure as well.
     */
-    class QL_DEPRECATED DriftTermStructure : public ZeroYieldStructure {
+    class DriftTermStructure : public ZeroYieldStructure {
       public:
         DriftTermStructure(const Handle<YieldTermStructure>& riskFreeTS,
                            Handle<YieldTermStructure> dividendTS,

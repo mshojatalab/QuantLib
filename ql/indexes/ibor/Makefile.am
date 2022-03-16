@@ -32,7 +32,6 @@ this_include_HEADERS = \
     sofr.hpp \
     sonia.hpp \
     tibor.hpp \
-    tona.hpp \
     thbfix.hpp \
     trlibor.hpp \
     usdlibor.hpp \

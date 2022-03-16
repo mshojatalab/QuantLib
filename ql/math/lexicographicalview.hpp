@@ -29,12 +29,12 @@
 
 namespace QuantLib {
 
-    /*! \deprecated To be removed as unused.
-                    Copy it in your codebase if you need it.
-                    Deprecated in version 1.26.
+    //! Lexicographical 2-D view of a contiguous set of data.
+    /*! This view can be used to easily store a discretized 2-D function
+        in an array to be used in a finite differences calculation.
     */
     template <class RandomAccessIterator>
-    class QL_DEPRECATED LexicographicalView {
+    class LexicographicalView {
       public:
         //! attaches the view with the given dimension to a sequence
         LexicographicalView(const RandomAccessIterator& begin,
@@ -80,8 +80,6 @@ namespace QuantLib {
 
 
     // inline definitions
-
-    QL_DEPRECATED_DISABLE_WARNING
 
     template <class RandomAccessIterator>
     inline
@@ -164,7 +162,6 @@ namespace QuantLib {
         return ySize_;
     }
 
-    QL_DEPRECATED_ENABLE_WARNING
 }
 
 

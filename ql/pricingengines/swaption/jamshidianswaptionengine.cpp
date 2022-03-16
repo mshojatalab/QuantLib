@@ -64,9 +64,7 @@ namespace QuantLib {
                    "cannot use the Jamshidian decomposition "
                    "on exotic swaptions");
 
-        QL_REQUIRE(arguments_.swap->spread() == 0.0, "non zero spread (" << arguments_.swap->spread() << ") not allowed");
-
-        QL_REQUIRE(!model_.empty(), "no model specified");
+        QL_REQUIRE(arguments_.swap->spread() == 0.0, "non zero spread (" << arguments_.swap->spread() << ") not allowed"); // PC
 
         Date referenceDate;
         DayCounter dayCounter;

@@ -161,7 +161,7 @@ void MCLongstaffSchwartzEngineTest::testAmericanOption() {
     expectedExProb[1][1] = 0.67569; // (price: 5.764)
     expectedExProb[1][2] = 0.65562; // (price: 7.138)
 
-    LsmBasisSystem::PolynomialType polynomialTypes[]
+    LsmBasisSystem::PolynomType polynomTypes[]
         = { LsmBasisSystem::Monomial, LsmBasisSystem::Laguerre,
             LsmBasisSystem::Hermite, LsmBasisSystem::Hyperbolic,
             LsmBasisSystem::Chebyshev2nd };
@@ -192,10 +192,12 @@ void MCLongstaffSchwartzEngineTest::testAmericanOption() {
                   .withAntitheticVariate()
                   .withAbsoluteTolerance(0.02)
                   .withSeed(42)
-                  .withPolynomialOrder(3)
-                  .withBasisSystem(polynomialTypes[0*(i*3+j)%LENGTH(polynomialTypes)]);
+                  .withPolynomOrder(3)
+                  .withBasisSystem(
+                       polynomTypes[0*(i*3+j)%LENGTH(polynomTypes)]);
 
             americanOption.setPricingEngine(mcengine);
+            // FLOATING_POINT_EXCEPTION
             const Real calculated = americanOption.NPV();
             const Real errorEstimate = americanOption.errorEstimate();
             const Real exerciseProbability =

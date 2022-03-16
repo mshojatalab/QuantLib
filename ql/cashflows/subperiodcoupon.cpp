@@ -159,9 +159,7 @@ namespace QuantLib {
     : schedule_(schedule), index_(std::move(i)), paymentCalendar_(schedule.calendar()),
       paymentAdjustment_(Following), paymentLag_(0), averagingMethod_(RateAveraging::Compound), 
       exCouponPeriod_(Period()), exCouponCalendar_(Calendar()), 
-      exCouponAdjustment_(Unadjusted), exCouponEndOfMonth_(false) {
-        QL_REQUIRE(index_, "no index provided");
-    }
+      exCouponAdjustment_(Unadjusted), exCouponEndOfMonth_(false) {}
 
     SubPeriodsLeg& SubPeriodsLeg::withNotionals(Real notional) {
         notionals_ = std::vector<Real>(1, notional);

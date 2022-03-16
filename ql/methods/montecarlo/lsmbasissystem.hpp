@@ -36,22 +36,14 @@ namespace QuantLib {
 
     class LsmBasisSystem {
       public:
-        enum PolynomialType {
-            Monomial, Laguerre, Hermite, Hyperbolic,
-            Legendre, Chebyshev, Chebyshev2nd
-        };
-
-        /*! \deprecated Renamed to PolynomialType.
-                        Deprecated in version 1.26.
-        */
-        QL_DEPRECATED
-        typedef PolynomialType PolynomType;
+        enum PolynomType { Monomial, Laguerre, Hermite, Hyperbolic,
+                           Legendre, Chebyshev, Chebyshev2nd };
 
         static std::vector<ext::function<Real(Real)> >
-        pathBasisSystem(Size order, PolynomialType type);
+            pathBasisSystem(Size order, PolynomType polyType);
 
         static std::vector<ext::function<Real(Array)> >
-        multiPathBasisSystem(Size dim, Size order, PolynomialType type);
+            multiPathBasisSystem(Size dim, Size order, PolynomType polyType);
     };
 
 

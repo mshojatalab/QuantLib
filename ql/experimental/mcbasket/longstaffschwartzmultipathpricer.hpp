@@ -45,12 +45,12 @@ namespace QuantLib {
     */
     class LongstaffSchwartzMultiPathPricer : public PathPricer<MultiPath> {
       public:
-        LongstaffSchwartzMultiPathPricer(const ext::shared_ptr<PathPayoff>& payoff,
-                                         const std::vector<Size>& timePositions,
-                                         std::vector<Handle<YieldTermStructure> > forwardTermStructure,
-                                         Array discounts,
-                                         Size polynomialOrder,
-                                         LsmBasisSystem::PolynomialType polynomialType);
+        LongstaffSchwartzMultiPathPricer(const ext::shared_ptr<PathPayoff>&,
+                                         const std::vector<Size>&,
+                                         std::vector<Handle<YieldTermStructure> >,
+                                         Array,
+                                         Size,
+                                         LsmBasisSystem::PolynomType);
 
         Real operator()(const MultiPath& multiPath) const override;
         virtual void calibrate();

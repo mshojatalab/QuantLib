@@ -46,7 +46,6 @@ namespace QuantLib {
     }
 
     void FdG2SwaptionEngine::calculate() const {
-        QL_REQUIRE(!model_.empty(), "no model specified");
 
         // 1. Term structure
         const Handle<YieldTermStructure> ts = model_->termStructure();
