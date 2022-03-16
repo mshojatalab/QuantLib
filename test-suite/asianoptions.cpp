@@ -23,6 +23,7 @@
 
 #include "asianoptions.hpp"
 #include "utilities.hpp"
+#include <ql/time/calendars/target.hpp>
 #include <ql/time/daycounters/actual360.hpp>
 #include <ql/time/daycounters/actual365fixed.hpp>
 #include <ql/instruments/asianoption.hpp>
@@ -978,6 +979,152 @@ void AsianOptionTest::testMCDiscreteArithmeticAveragePrice() {
     }
 }
 
+void AsianOptionTest::testFullCashConversion() {
+    QuantLib::DayCounter dc = QuantLib::Actual360();
+    QuantLib::Calendar calendar = QuantLib::TARGET();
+    QuantLib::Date todaysDate(1, QuantLib::March, 2022);
+    todaysDate = calendar.adjust(todaysDate);
+    QuantLib::Settings::instance().evaluationDate() = todaysDate;
+    QuantLib::Date today = QuantLib::Settings::instance().evaluationDate();
+
+
+    auto faceValue = 100.0;
+    auto currentSpot = 110.0;
+    auto vol = 13.0; // 13% volatility
+    auto r = 1.0; // 1% interest rate
+
+    boost::shared_ptr<QuantLib::SimpleQuote> spot(new QuantLib::SimpleQuote(currentSpot));
+    boost::shared_ptr<QuantLib::SimpleQuote> qRate(new QuantLib::SimpleQuote(0.0));
+    boost::shared_ptr<QuantLib::YieldTermStructure> qTS = flatRate(qRate, dc);
+    boost::shared_ptr<QuantLib::SimpleQuote> rRate(new QuantLib::SimpleQuote(r / 100.0));
+    boost::shared_ptr<QuantLib::YieldTermStructure> rTS = flatRate(rRate, dc);
+    boost::shared_ptr<QuantLib::SimpleQuote> v(new QuantLib::SimpleQuote(vol / 100.0));
+    boost::shared_ptr<QuantLib::BlackVolTermStructure> volTS = flatVol(today, vol / 100.0, QuantLib::Actual365Fixed());
+
+    QuantLib::Average::Type averageType = QuantLib::Average::Arithmetic;
+    QuantLib::Real runningSum = 0.0;
+    QuantLib::Size pastFixings = 0;
+    QuantLib::Date maturDate(1, QuantLib::March, 2027);
+
+    // Caculate Previous 60 business days starting from maturity date (exclusive)
+    std::vector<QuantLib::Date> fixingDates(60);
+
+    QuantLib::Date date(QuantLib::Date(maturDate - 1));
+
+    for (int index = 60 - 1; index >= 0; --index) {
+        date = calendar.adjust(date, QuantLib::Preceding);
+        fixingDates[index] = date;
+
+        if (index < 59 && fixingDates[index] == fixingDates[index + 1])
+        {
+            date = date - 1;
+            date = calendar.adjust(date, QuantLib::Preceding);
+            fixingDates[index] = date;
+        }
+    }
+
+    boost::shared_ptr<QuantLib::StrikedTypePayoff> payoff(new PlainVanillaPayoff(QuantLib::Option::Call, faceValue));
+
+    boost::shared_ptr<QuantLib::BlackScholesMertonProcess> stochProcess(new
+        QuantLib::BlackScholesMertonProcess(QuantLib::Handle<QuantLib::Quote>(spot),
+        QuantLib::Handle<QuantLib::YieldTermStructure>(qTS),
+        QuantLib::Handle<QuantLib::YieldTermStructure>(rTS),
+        QuantLib::Handle<QuantLib::BlackVolTermStructure>(volTS)));
+
+    boost::shared_ptr<QuantLib::PricingEngine> engine =
+        QuantLib::MakeMCDiscreteArithmeticAPEngine<QuantLib::LowDiscrepancy>(stochProcess)
+        .withSamples(4095)
+        .withControlVariate(true);
+
+    boost::shared_ptr<QuantLib::Exercise> exercise(new QuantLib::EuropeanExercise(maturDate));
+    QuantLib::DiscreteAveragingAsianOption option(averageType, runningSum, pastFixings, fixingDates,
+        payoff, exercise);
+
+    option.setPricingEngine(engine);
+
+    for (int i = 0; i <= 4; ++i)
+    {
+        today = QuantLib::Date(1, QuantLib::March, 2022 + i);
+        QuantLib::Settings::instance().evaluationDate() = today;
+        QuantLib::Real quantLibValue = option.NPV() + faceValue * exp(-r / 100.0 * (maturDate - today) / 360.0);
+
+        BOOST_CHECK_CLOSE(0.0, quantLibValue, 0.2); // error less than 0.2%
+    }
+}
+
+void AsianOptionTest::testNetShareConversion() {
+    QuantLib::DayCounter dc = QuantLib::Actual360();
+    QuantLib::Calendar calendar = QuantLib::TARGET();
+    QuantLib::Date todaysDate(1, QuantLib::March, 2022);
+    todaysDate = calendar.adjust(todaysDate);
+    QuantLib::Settings::instance().evaluationDate() = todaysDate;
+    QuantLib::Date today = QuantLib::Settings::instance().evaluationDate();
+
+    auto faceValue = 100.0;
+    auto currentSpot = 110.0;
+    auto vol = 13.0; // 13% volatility
+    auto r = 1.0;    // 1% interest rate
+
+    boost::shared_ptr<QuantLib::SimpleQuote> spot(new QuantLib::SimpleQuote(currentSpot));
+    boost::shared_ptr<QuantLib::SimpleQuote> qRate(new QuantLib::SimpleQuote(0.0));
+    boost::shared_ptr<QuantLib::YieldTermStructure> qTS = flatRate(qRate, dc);
+    boost::shared_ptr<QuantLib::SimpleQuote> rRate(new QuantLib::SimpleQuote(r / 100.0));
+    boost::shared_ptr<QuantLib::YieldTermStructure> rTS = flatRate(rRate, dc);
+    boost::shared_ptr<QuantLib::SimpleQuote> v(new QuantLib::SimpleQuote(vol / 100.0));
+    boost::shared_ptr<QuantLib::BlackVolTermStructure> volTS =
+        flatVol(today, vol / 100.0, QuantLib::Actual365Fixed());
+
+    QuantLib::Average::Type averageType = QuantLib::Average::Arithmetic;
+    QuantLib::Real runningSum = 0.0;
+    QuantLib::Size pastFixings = 0;
+    QuantLib::Date maturDate(1, QuantLib::March, 2027);
+
+    // Caculate Previous 60 business days starting from maturity date (exclusive)
+    std::vector<QuantLib::Date> fixingDates(60);
+
+    QuantLib::Date date(QuantLib::Date(maturDate - 1));
+
+    for (int index = 60 - 1; index >= 0; --index) {
+        date = calendar.adjust(date, QuantLib::Preceding);
+        fixingDates[index] = date;
+
+        if (index < 59 && fixingDates[index] == fixingDates[index + 1]) {
+            date = date - 1;
+            date = calendar.adjust(date, QuantLib::Preceding);
+            fixingDates[index] = date;
+        }
+    }
+
+    boost::shared_ptr<QuantLib::StrikedTypePayoff> payoff(
+        new PlainVanillaPayoff(QuantLib::Option::Call, faceValue));
+
+    boost::shared_ptr<QuantLib::BlackScholesMertonProcess> stochProcess(
+        new QuantLib::BlackScholesMertonProcess(
+            QuantLib::Handle<QuantLib::Quote>(spot),
+            QuantLib::Handle<QuantLib::YieldTermStructure>(qTS),
+            QuantLib::Handle<QuantLib::YieldTermStructure>(rTS),
+            QuantLib::Handle<QuantLib::BlackVolTermStructure>(volTS)));
+
+    boost::shared_ptr<QuantLib::PricingEngine> engine =
+        QuantLib::MakeMCDiscreteArithmeticAvgConversionAPEngine<QuantLib::LowDiscrepancy>(stochProcess)
+            .withSamples(4095)
+            .withControlVariate(true);
+
+    boost::shared_ptr<QuantLib::Exercise> exercise(new QuantLib::EuropeanExercise(maturDate));
+    QuantLib::DiscreteAveragingAsianOption option(averageType, runningSum, pastFixings, fixingDates,
+                                                  payoff, exercise);
+
+    option.setPricingEngine(engine);
+
+    for (int i = 0; i <= 4; ++i) {
+        today = QuantLib::Date(1, QuantLib::March, 2022 + i);
+        QuantLib::Settings::instance().evaluationDate() = today;
+        QuantLib::Real quantLibValue =
+            option.NPV() + faceValue * exp(-r / 100.0 * (maturDate - today) / 360.0);
+
+        BOOST_CHECK_CLOSE(0.0, quantLibValue, 0.2); // error less than 0.2%
+    }
+}
 
 void AsianOptionTest::testMCDiscreteArithmeticAveragePriceHeston() {
 
@@ -2095,20 +2242,22 @@ void AsianOptionTest::testAnalyticContinuousGeometricAveragePriceHeston() {
 test_suite* AsianOptionTest::suite(SpeedLevel speed) {
     auto* suite = BOOST_TEST_SUITE("Asian option tests");
 
-    suite->add(QUANTLIB_TEST_CASE(&AsianOptionTest::testAnalyticContinuousGeometricAveragePrice));
-    suite->add(QUANTLIB_TEST_CASE(&AsianOptionTest::testAnalyticContinuousGeometricAveragePriceGreeks));
-    suite->add(QUANTLIB_TEST_CASE(&AsianOptionTest::testAnalyticDiscreteGeometricAveragePrice));
-    suite->add(QUANTLIB_TEST_CASE(&AsianOptionTest::testAnalyticDiscreteGeometricAverageStrike));
-    suite->add(QUANTLIB_TEST_CASE(&AsianOptionTest::testMCDiscreteGeometricAveragePrice));
-    suite->add(QUANTLIB_TEST_CASE(&AsianOptionTest::testMCDiscreteArithmeticAverageStrike));
-    suite->add(QUANTLIB_TEST_CASE(&AsianOptionTest::testAnalyticDiscreteGeometricAveragePriceGreeks));
-    suite->add(QUANTLIB_TEST_CASE(&AsianOptionTest::testPastFixings));
-    suite->add(QUANTLIB_TEST_CASE(&AsianOptionTest::testAllFixingsInThePast));
+    //suite->add(QUANTLIB_TEST_CASE(&AsianOptionTest::testAnalyticContinuousGeometricAveragePrice));
+    //suite->add(QUANTLIB_TEST_CASE(&AsianOptionTest::testAnalyticContinuousGeometricAveragePriceGreeks));
+    //suite->add(QUANTLIB_TEST_CASE(&AsianOptionTest::testAnalyticDiscreteGeometricAveragePrice));
+    //suite->add(QUANTLIB_TEST_CASE(&AsianOptionTest::testAnalyticDiscreteGeometricAverageStrike));
+    //suite->add(QUANTLIB_TEST_CASE(&AsianOptionTest::testMCDiscreteGeometricAveragePrice));
+    //suite->add(QUANTLIB_TEST_CASE(&AsianOptionTest::testMCDiscreteArithmeticAverageStrike));
+    //suite->add(QUANTLIB_TEST_CASE(&AsianOptionTest::testAnalyticDiscreteGeometricAveragePriceGreeks));
+    //suite->add(QUANTLIB_TEST_CASE(&AsianOptionTest::testPastFixings));
+    //suite->add(QUANTLIB_TEST_CASE(&AsianOptionTest::testAllFixingsInThePast));
 
-    if (speed <= Fast) {
-        suite->add(QUANTLIB_TEST_CASE(&AsianOptionTest::testMCDiscreteArithmeticAveragePrice));
-        suite->add(QUANTLIB_TEST_CASE(&AsianOptionTest::testMCDiscreteGeometricAveragePriceHeston));
-    }
+    //if (speed <= Fast) {
+        //suite->add(QUANTLIB_TEST_CASE(&AsianOptionTest::testMCDiscreteArithmeticAveragePrice));
+        //suite->add(QUANTLIB_TEST_CASE(&AsianOptionTest::testMCDiscreteGeometricAveragePriceHeston));
+        suite->add(QUANTLIB_TEST_CASE(&AsianOptionTest::testFullCashConversion));
+        suite->add(QUANTLIB_TEST_CASE(&AsianOptionTest::testNetShareConversion));
+    //}
 
     if (speed == Slow) {
         suite->add(QUANTLIB_TEST_CASE(&AsianOptionTest::testMCDiscreteArithmeticAveragePriceHeston));

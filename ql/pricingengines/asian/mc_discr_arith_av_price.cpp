@@ -51,4 +51,23 @@ namespace QuantLib {
         return discount_ * payoff_(averagePrice);
     }
 
+    Real ArithmeticAvgConversionAPOPathPricer::operator()(const Path& path) const  {
+        Size n = path.length();
+        QL_REQUIRE(n>1, "the path cannot be empty");
+
+        Real sum;
+        Size fixings;
+        if (path.timeGrid().mandatoryTimes()[0]==0.0) {
+            // include initial fixing
+            sum = std::accumulate(path.begin(),path.end(),runningSum_);
+            fixings = pastFixings_ + n;
+        } else {
+            sum = std::accumulate(path.begin()+1,path.end(),runningSum_);
+            fixings = pastFixings_ + n - 1;
+        }
+        Real averagePrice = sum/fixings;
+        Real S = path.back();
+        return discount_ * payoff_(S*(1.0 - 100.0 /averagePrice));
+    }
+
 }

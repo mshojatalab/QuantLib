@@ -40,6 +40,8 @@ class AsianOptionTest {
     static void testMCDiscreteGeometricAveragePrice();
     static void testMCDiscreteGeometricAveragePriceHeston();
     static void testMCDiscreteArithmeticAveragePrice();
+    static void testFullCashConversion();
+    static void testNetShareConversion();
     static void testMCDiscreteArithmeticAveragePriceHeston();
     static void testMCDiscreteArithmeticAverageStrike();
     static void testAnalyticDiscreteGeometricAveragePriceGreeks();

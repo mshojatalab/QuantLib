@@ -80,6 +80,34 @@ namespace QuantLib {
         }
     };
 
+    template <class RNG = PseudoRandom, class S = Statistics>
+    class MCDiscreteArithmeticAvgConversionAPEngine
+        : public MCDiscreteArithmeticAPEngine<RNG, S> {
+      public:
+        typedef
+        typename MCDiscreteAveragingAsianEngineBase<SingleVariate,RNG,S>::path_generator_type
+            path_generator_type;
+        typedef
+        typename MCDiscreteAveragingAsianEngineBase<SingleVariate,RNG,S>::path_pricer_type
+            path_pricer_type;
+        typedef typename MCDiscreteAveragingAsianEngineBase<SingleVariate,RNG,S>::stats_type
+            stats_type;
+        // constructor
+        MCDiscreteArithmeticAvgConversionAPEngine(
+             const ext::shared_ptr<GeneralizedBlackScholesProcess>& process,
+             bool brownianBridge,
+             bool antitheticVariate,
+             bool controlVariate,
+             Size requiredSamples,
+             Real requiredTolerance,
+             Size maxSamples,
+            BigNatural seed)
+        : MCDiscreteArithmeticAPEngine<RNG, S> {process, 
+            brownianBridge,    antitheticVariate, controlVariate,
+              requiredSamples, requiredTolerance, maxSamples, seed} {}
+      protected:
+        ext::shared_ptr<path_pricer_type> pathPricer() const override;
+    };
 
     class ArithmeticAPOPathPricer : public PathPricer<Path> {
       public:
@@ -90,13 +118,50 @@ namespace QuantLib {
                                 Size pastFixings = 0);
         Real operator()(const Path& path) const override;
 
-      private:
+      protected:
         PlainVanillaPayoff payoff_;
         DiscountFactor discount_;
         Real runningSum_;
         Size pastFixings_;
     };
 
+    class ArithmeticAvgConversionAPOPathPricer : public ArithmeticAPOPathPricer {
+      public:
+        ArithmeticAvgConversionAPOPathPricer(Option::Type type,
+                                Real strike,
+                                DiscountFactor discount,
+                                Real runningSum = 0.0,
+                                             Size pastFixings = 0)
+        : ArithmeticAPOPathPricer{type, strike, discount, runningSum, pastFixings} {}
+        Real operator()(const Path& path) const override;
+
+    };
+
+    template <class RNG, class S>
+    inline ext::shared_ptr<
+        typename MCDiscreteArithmeticAvgConversionAPEngine<RNG, S>::path_pricer_type>
+    MCDiscreteArithmeticAvgConversionAPEngine<RNG, S>::pathPricer() const {
+
+        ext::shared_ptr<PlainVanillaPayoff> payoff =
+            ext::dynamic_pointer_cast<PlainVanillaPayoff>(this->arguments_.payoff);
+        QL_REQUIRE(payoff, "non-plain payoff given");
+
+        ext::shared_ptr<EuropeanExercise> exercise =
+            ext::dynamic_pointer_cast<EuropeanExercise>(this->arguments_.exercise);
+        QL_REQUIRE(exercise, "wrong exercise given");
+
+        ext::shared_ptr<GeneralizedBlackScholesProcess> process =
+            ext::dynamic_pointer_cast<GeneralizedBlackScholesProcess>(this->process_);
+        QL_REQUIRE(process, "Black-Scholes process required");
+
+        return ext::shared_ptr<
+            typename MCDiscreteArithmeticAvgConversionAPEngine<RNG, S>::path_pricer_type>(
+            new ArithmeticAvgConversionAPOPathPricer(
+                payoff->optionType(), payoff->strike(),
+                                        process->riskFreeRate()->discount(exercise->lastDate()),
+                                        this->arguments_.runningAccumulator,
+                                        this->arguments_.pastFixings));
+    }
 
     // inline definitions
 
@@ -183,7 +248,8 @@ namespace QuantLib {
               process->riskFreeRate()->discount(this->timeGrid().back())));
     }
 
-    template <class RNG = PseudoRandom, class S = Statistics>
+    template <class RNG = PseudoRandom,
+              class S = Statistics>
     class MakeMCDiscreteArithmeticAPEngine {
       public:
         explicit MakeMCDiscreteArithmeticAPEngine(
@@ -198,7 +264,9 @@ namespace QuantLib {
         MakeMCDiscreteArithmeticAPEngine& withControlVariate(bool b = true);
         // conversion to pricing engine
         operator ext::shared_ptr<PricingEngine>() const;
-      private:
+
+      protected:
+        virtual ext::shared_ptr<MCDiscreteArithmeticAPEngine<RNG,S>> make_new() const;
         ext::shared_ptr<GeneralizedBlackScholesProcess> process_;
         bool antithetic_, controlVariate_;
         Size samples_, maxSamples_;
@@ -272,20 +340,45 @@ namespace QuantLib {
     }
 
     template <class RNG, class S>
-    inline
-    MakeMCDiscreteArithmeticAPEngine<RNG,S>::operator ext::shared_ptr<PricingEngine>()
-                                                                      const {
-        return ext::shared_ptr<PricingEngine>(new
-            MCDiscreteArithmeticAPEngine<RNG,S>(process_,
-                                                brownianBridge_,
-                                                antithetic_, controlVariate_,
-                                                samples_, tolerance_,
-                                                maxSamples_,
-                                                seed_));
+    inline ext::shared_ptr<MCDiscreteArithmeticAPEngine<RNG,S>>
+    MakeMCDiscreteArithmeticAPEngine<RNG,S>::make_new() const {
+
+        return ext::shared_ptr<MCDiscreteArithmeticAPEngine<RNG,S>>(
+            new MCDiscreteArithmeticAPEngine<RNG,S>(
+            process_, brownianBridge_, antithetic_, controlVariate_, samples_, tolerance_,
+            maxSamples_, seed_));
     }
 
+    template <class RNG, class S>
+    inline MakeMCDiscreteArithmeticAPEngine<RNG,S>::operator ext::shared_ptr<PricingEngine>()
+                                                                      const {
+        return ext::shared_ptr<PricingEngine>(make_new());
+    }
 
+    template <class RNG = PseudoRandom, class S = Statistics>
+    class MakeMCDiscreteArithmeticAvgConversionAPEngine
+    : public MakeMCDiscreteArithmeticAPEngine<RNG,S> {
+      public:
+        explicit MakeMCDiscreteArithmeticAvgConversionAPEngine(
+            ext::shared_ptr<GeneralizedBlackScholesProcess> process);
 
+      protected:
+        ext::shared_ptr<MCDiscreteArithmeticAPEngine<RNG, S>> make_new() const override;
+    };
+
+    template <class RNG, class S>
+    inline MakeMCDiscreteArithmeticAvgConversionAPEngine<RNG, S>::MakeMCDiscreteArithmeticAvgConversionAPEngine(
+        ext::shared_ptr<GeneralizedBlackScholesProcess> process): MakeMCDiscreteArithmeticAPEngine<RNG, S>{process} {}
+
+    template <class RNG, class S>
+    inline ext::shared_ptr<MCDiscreteArithmeticAPEngine<RNG,S>>
+    MakeMCDiscreteArithmeticAvgConversionAPEngine<RNG,S>::make_new() const {
+
+        return ext::shared_ptr<MCDiscreteArithmeticAPEngine<RNG,S>>(
+            new MCDiscreteArithmeticAvgConversionAPEngine<RNG, S>(this->process_, this->brownianBridge_, this->antithetic_,
+                                                     this->controlVariate_, this->samples_, this->tolerance_,
+                                                     this->maxSamples_, this->seed_));
+    }
 }
 
 
